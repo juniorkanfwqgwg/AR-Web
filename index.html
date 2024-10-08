@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Junior</title>
+    <title>three.js ar - hit test</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <style>
@@ -100,7 +100,12 @@
     <button type="button" id="place-button">PLACE</button>
 </div>
 
-<script>
+<script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.133.1/build/three.module.js';
+    import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.133.1/examples/jsm/loaders/GLTFLoader.js';
+
+    let scene, camera, renderer;
+
     // ฟังก์ชันตรวจสอบการรองรับ WebXR
     function supportsWebXR() {
         return navigator.xr && navigator.xr.isSessionSupported('immersive-ar');
@@ -130,8 +135,7 @@
     function init() {
         // ตรวจสอบว่ารองรับ WebXR หรือไม่
         if (supportsWebXR()) {
-            // ถ้ารองรับ WebXR แสดงปุ่ม AR
-            document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
+            console.log("WebXR supported");
         } else {
             // ถ้าไม่รองรับ WebXR ขอสิทธิ์เข้าถึงกล้องแบบ fallback
             requestCameraAccess();
@@ -150,8 +154,22 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         container.appendChild(renderer.domElement);
 
-        // อัปเดตขนาดกล้องเมื่อขนาดหน้าต่างเปลี่ยนแปลง
+        // โหลดโมเดลเมื่อคลิกที่ item_1
+        document.getElementById("1").addEventListener("click", () => {
+            loadModel('https://raw.githubusercontent.com/juniorkanfwqgwg/AR-Web/main/3d/1.glb');
+        });
+
         window.addEventListener('resize', onWindowResize, false);
+    }
+
+    function loadModel(url) {
+        const loader = new GLTFLoader();
+        loader.load(url, function (gltf) {
+            scene.add(gltf.scene);
+            animate(); // เริ่มการ animate เมื่อโหลดโมเดลเสร็จสิ้น
+        }, undefined, function (error) {
+            console.error('An error occurred loading the model:', error);
+        });
     }
 
     function onWindowResize() {
@@ -167,7 +185,6 @@
 
     // เริ่มการทำงาน
     init();
-    animate();
 
 </script>
 
