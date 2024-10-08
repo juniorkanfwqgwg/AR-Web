@@ -78,10 +78,27 @@
 
 <script type="module">
     import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.133.1/build/three.module.js';
-    import { ARButton } from 'https://cdn.jsdelivr.net/npm/three@0.133.1/examples/jsm/webxr/ARButton.js';
     import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.133.1/examples/jsm/loaders/GLTFLoader.js';
 
     let container, camera, scene, renderer, model;
+
+    // ฟังก์ชันขอสิทธิ์เปิดกล้อง
+    async function requestCameraAccess() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            const videoElement = document.getElementById('camera-feed');
+            videoElement.srcObject = stream;
+            videoElement.style.display = 'block'; // แสดงวิดีโอกล้องเมื่อได้รับสิทธิ์
+        } catch (error) {
+            console.error("Camera access denied:", error);
+            alert("Unable to access the camera. Please allow camera access.");
+        }
+    }
+
+    // ฟังก์ชันเริ่มต้นการทำงาน AR หรือกล้อง
+    function startAR() {
+        requestCameraAccess();
+    }
 
     function init() {
         container = document.getElementById('container');
@@ -126,44 +143,12 @@
         renderer.render(scene, camera);
     }
 
-    // ฟังก์ชันขอสิทธิ์เปิดกล้องหากไม่รองรับ WebXR
-    async function requestCameraAccess() {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-            const videoElement = document.getElementById('camera-feed');
-            videoElement.srcObject = stream;
-            videoElement.style.display = 'block'; // แสดงวิดีโอจากกล้อง
-        } catch (error) {
-            console.error("Camera access denied:", error);
-            alert("Unable to access camera. Please allow camera access.");
-        }
-    }
+    // เริ่มต้นการทำงาน AR เมื่อกดปุ่ม
+    document.getElementById('start-ar').addEventListener('click', () => {
+        startAR();
+    });
 
-    // ตรวจสอบการรองรับ WebXR
-    async function startAR() {
-        if (navigator.xr) {
-            try {
-                const isARSupported = await navigator.xr.isSessionSupported('immersive-ar');
-                if (isARSupported) {
-                    document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
-                } else {
-                    console.log("WebXR not supported, using camera fallback.");
-                    requestCameraAccess(); // fallback ไปที่กล้อง
-                }
-            } catch (error) {
-                console.error("Error checking AR support:", error);
-                requestCameraAccess(); // fallback ไปที่กล้อง
-            }
-        } else {
-            console.log("WebXR not available, using camera fallback.");
-            requestCameraAccess(); // fallback ไปที่กล้อง
-        }
-    }
-
-    // เริ่มการทำงานของ AR
-    document.getElementById('start-ar').addEventListener('click', startAR);
-
-    // เริ่มต้นการทำงาน
+    // เริ่มต้นการทำงานของ three.js
     init();
 
 </script>
