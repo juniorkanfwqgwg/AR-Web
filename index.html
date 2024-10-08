@@ -20,6 +20,14 @@
             height: 100%;
         }
 
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
         /* ปุ่มเริ่ม AR */
         .ar-button {
             position: absolute;
@@ -48,108 +56,96 @@
             text-shadow: 0 0 5px #ffdf00, 0 0 10px #ff8c00, 0 0 15px #ff4500;
         }
 
-        /* พื้นหลังแบบเปลวไฟ */
-        #background {
+        /* กรอบสำหรับสแกน AR */
+        #scan-box {
             position: absolute;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle, #ff4500, #ff6347, #ff8c00);
-            opacity: 0.8;
-            z-index: -1;
-        }
-
-        video#camera-feed {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: none; /* ซ่อนเมื่อไม่ใช้งาน */
+            top: calc(50% - 100px);
+            left: calc(50% - 100px);
+            width: 200px;
+            height: 200px;
+            border: 4px dashed #ffdf00;
+            z-index: 2;
+            display: none;
         }
     </style>
 </head>
 <body>
 
 <div id="container"></div>
-<div id="background"></div> <!-- พื้นหลังไฟ -->
-<video id="camera-feed" autoplay playsinline></video>
+<canvas id="canvas"></canvas> <!-- แสดงวิดีโอพร้อมฟิลเตอร์ -->
+<div id="scan-box"></div> <!-- กรอบสแกน AR -->
 <button class="ar-button flame-effect" id="start-ar">Start AR</button>
 
 <script type="module">
-    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.133.1/build/three.module.js';
-    import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.133.1/examples/jsm/loaders/GLTFLoader.js';
-
-    let container, camera, scene, renderer, model;
-
+    let videoStream, canvas, ctx;
+    const scanBox = document.getElementById('scan-box');
+    
     // ฟังก์ชันขอสิทธิ์เปิดกล้อง
     async function requestCameraAccess() {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-            const videoElement = document.getElementById('camera-feed');
-            videoElement.srcObject = stream;
-            videoElement.style.display = 'block'; // แสดงวิดีโอกล้องเมื่อได้รับสิทธิ์
+            // ขอสิทธิ์การเข้าถึงกล้อง
+            videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+
+            // แสดงวิดีโอผ่าน canvas
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            const videoElement = document.createElement('video');
+            videoElement.srcObject = videoStream;
+            videoElement.play();
+
+            // เมื่อได้รับการอนุญาตแล้ว แสดงกรอบสแกน AR
+            scanBox.style.display = 'block';
+
+            // ใส่ฟิลเตอร์ให้กล้อง
+            videoElement.addEventListener('play', () => {
+                drawVideoWithFilter(videoElement);
+            });
+
         } catch (error) {
             console.error("Camera access denied:", error);
             alert("Unable to access the camera. Please allow camera access.");
         }
     }
 
-    // ฟังก์ชันเริ่มต้นการทำงาน AR หรือกล้อง
-    function startAR() {
-        requestCameraAccess();
-    }
-
-    function init() {
-        container = document.getElementById('container');
-
-        scene = new THREE.Scene();
-
-        camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 200);
-        scene.add(camera);
-
-        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.xr.enabled = true;
-        container.appendChild(renderer.domElement);
-
-        const loader = new GLTFLoader();
-        loader.load('https://raw.githubusercontent.com/juniorkanfwqgwg/AR-Web/main/3d/1.glb', function (gltf) {
-            model = gltf.scene;
-            model.scale.set(0.2, 0.2, 0.2); // ขนาดโมเดล
-            scene.add(model);
-        });
-
-        window.addEventListener('resize', onWindowResize, false);
-
-        animate();
-    }
-
-    function onWindowResize() {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-
-    function animate() {
-        renderer.setAnimationLoop(render);
-    }
-
-    function render() {
-        if (model) {
-            model.rotation.y += 0.01; // หมุนโมเดลเล็กน้อย
+    // วาดวิดีโอพร้อมฟิลเตอร์ใน canvas
+    function drawVideoWithFilter(videoElement) {
+        function drawFrame() {
+            ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            applyFilter(ctx, canvas.width, canvas.height); // ใส่ฟิลเตอร์ให้วิดีโอ
+            requestAnimationFrame(drawFrame);
         }
-        renderer.render(scene, camera);
+        drawFrame();
+    }
+
+    // ฟิลเตอร์ใส่ให้กล้อง (เช่น เปลี่ยนสีของวิดีโอ)
+    function applyFilter(ctx, width, height) {
+        let imageData = ctx.getImageData(0, 0, width, height);
+        let data = imageData.data;
+
+        // ตัวอย่างฟิลเตอร์: เพิ่มสีส้มแบบแนวไฟ
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] += 40;     // เพิ่มค่าแดง
+            data[i + 1] -= 20; // ลดค่าทอง
+            data[i + 2] -= 30; // ลดค่าสีน้ำเงิน
+        }
+
+        ctx.putImageData(imageData, 0, 0);
     }
 
     // เริ่มต้นการทำงาน AR เมื่อกดปุ่ม
-    document.getElementById('start-ar').addEventListener('click', () => {
-        startAR();
+    document.getElementById('start-ar').addEventListener('click', async () => {
+        await requestCameraAccess();
     });
 
-    // เริ่มต้นการทำงานของ three.js
-    init();
+    // กำหนดขนาดของ canvas ให้พอดีกับหน้าจอ
+    function resizeCanvas() {
+        const canvas = document.getElementById('canvas');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas(); // เรียกครั้งแรกเพื่อกำหนดขนาดเริ่มต้น
 
 </script>
 
