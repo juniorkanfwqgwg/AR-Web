@@ -116,6 +116,19 @@
     var hitTestSource = null;
     var hitTestSourceRequested = false;
 
+    // ขออนุญาตเข้าถึงกล้อง
+    async function requestCameraAccess() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            const videoElement = document.getElementById('camera-feed');
+            videoElement.srcObject = stream;
+            videoElement.style.display = 'block'; // แสดงวิดีโอกล้อง
+        } catch (error) {
+            console.error("Camera access denied:", error);
+            alert("Unable to access camera. Please allow camera access.");
+        }
+    }
+
     init();
     animate();
 
@@ -152,7 +165,7 @@
         // ใช้ RGBELoader เพื่อโหลด environment map จาก GitHub
         new RGBELoader()
             .setDataType(THREE.UnsignedByteType)
-            .setPath('https://raw.githubusercontent.com/juniorkanfwqgwg/AR-Web/f93229915dbf1e3521944de824bd8478f3c01556/textures/')
+            .setPath('https://raw.githubusercontent.com/juniorkanfwqgwg/AR-Web/main/textures/')
             .load('photo_studio_01_1k.hdr', function (texture) {
                 envmap = pmremGenerator.fromEquirectangular(texture).texture;
                 scene.environment = envmap;
@@ -161,7 +174,7 @@
                 render();
 
                 // โหลดโมเดล GLB จาก GitHub ตาม ID ที่ผู้ใช้เลือก
-                var loader = new GLTFLoader().setPath('https://github.com/juniorkanfwqgwg/AR-Web/blob/main/3d/1.glb');
+                var loader = new GLTFLoader().setPath('https://raw.githubusercontent.com/juniorkanfwqgwg/AR-Web/main/3d/');
                 loader.load(model + ".glb", function (glb) {
                     current_object = glb.scene;
                     scene.add(current_object);
