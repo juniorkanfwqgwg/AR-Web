@@ -161,7 +161,7 @@
                 render();
 
                 // โหลดโมเดล GLB จาก GitHub ตาม ID ที่ผู้ใช้เลือก
-                var loader = new GLTFLoader().setPath('https://raw.githubusercontent.com/juniorkanfwqgwg/AR-Web/f93229915dbf1e3521944de824bd8478f3c01556/3d/');
+                var loader = new GLTFLoader().setPath('https://github.com/juniorkanfwqgwg/AR-Web/blob/main/3d/1.glb');
                 loader.load(model + ".glb", function (glb) {
                     current_object = glb.scene;
                     scene.add(current_object);
