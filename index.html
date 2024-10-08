@@ -3,9 +3,11 @@
 <head>
     <title>three.js ar - hit test</title>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
     <style>
         body {
+            margin: 0;
+            overflow: hidden;
             background-color: aqua;
             color: #fff;
             font-family: "Lato", sans-serif;
@@ -77,6 +79,12 @@
             object-fit: cover;
             display: none; /* ซ่อนเมื่อไม่ใช้งาน */
         }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
     </style>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 </head>
@@ -91,7 +99,7 @@
         <a class="ar-object" id="4" href="#">item_4</a>
     </div>
 
-    <div id="container" style="position: fixed;"></div>
+    <div id="container"></div>
 
     <video id="camera-feed" autoplay playsinline></video>
 
