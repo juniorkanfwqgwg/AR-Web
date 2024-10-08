@@ -11,50 +11,6 @@
             font-family: "Lato", sans-serif;
         }
 
-        .sidenav {
-            height: 100%;
-            width: 0;
-            position: fixed;
-            z-index: 1;
-            top: 0;
-            left: 0;
-            background-color: #111;
-            overflow-x: hidden;
-            transition: 0.5s;
-            padding-top: 60px;
-        }
-
-        .sidenav a {
-            padding: 8px 8px 8px 32px;
-            text-decoration: none;
-            font-size: 25px;
-            color: #818181;
-            display: block;
-            transition: 0.3s;
-        }
-
-        .sidenav a:hover {
-            color: #f1f1f1;
-        }
-
-        .sidenav .closebtn {
-            position: absolute;
-            top: 0;
-            right: 25px;
-            font-size: 36px;
-            margin-left: 50px;
-        }
-
-        @media screen and (max-height: 450px) {
-            .sidenav {
-                padding-top: 15px;
-            }
-
-            .sidenav a {
-                font-size: 18px;
-            }
-        }
-
         #place-button {
             position: absolute;
             bottom: 20px;
@@ -62,10 +18,6 @@
             width: 100px;
             height: 35px;
             display: none;
-        }
-
-        #VRButton {
-            margin-bottom: 70px !important;
         }
 
         video#camera-feed {
@@ -83,19 +35,7 @@
 <body>
 
 <div id="content">
-    <div id="mySidenav" class="sidenav">
-        <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
-        <a class="ar-object" id="1" href="#">item_1</a>
-        <a class="ar-object" id="2" href="#">item_2</a>
-        <a class="ar-object" id="3" href="#">item_3</a>
-        <a class="ar-object" id="4" href="#">item_4</a>
-    </div>
-
-    <div id="container" style="position: fixed;"></div>
-
     <video id="camera-feed" autoplay playsinline></video>
-
-    <span style="font-size:30px;cursor:pointer;position: absolute;" onclick="openNav()">&#9776; open</span>
 
     <button type="button" id="place-button">PLACE</button>
 </div>
@@ -115,84 +55,26 @@
     var reticle, pmremGenerator, current_object, controls, isAR, envmap;
     var hitTestSource = null;
     var hitTestSourceRequested = false;
+    let isCameraOpen = false;
 
-    // ขออนุญาตเข้าถึงกล้อง
+    // ฟังก์ชันขอสิทธิ์เข้าถึงกล้อง
     async function requestCameraAccess() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
             const videoElement = document.getElementById('camera-feed');
             videoElement.srcObject = stream;
-            videoElement.style.display = 'block'; // แสดงวิดีโอกล้อง
+            videoElement.style.display = 'block'; // แสดงกล้องเมื่อได้สิทธิ์
+            isCameraOpen = true;
         } catch (error) {
             console.error("Camera access denied:", error);
             alert("Unable to access camera. Please allow camera access.");
         }
     }
 
-    init();
-    animate();
-
-    $(".ar-object").click(function () {
-        if (current_object != null) {
-            scene.remove(current_object);
-        }
-
-        loadModel($(this).attr("id"));
-    });
-
-    $("#ARButton").click(function () {
-        current_object.visible = false;
-        isAR = true;
-    });
-
-    $("#VRButton").click(function () {
-        scene.background = envmap;
-        scene.position.z = -2;
-    });
-
-    $("#place-button").click(function () {
-        arPlace();
-    });
-
-    function arPlace() {
-        if (reticle.visible) {
-            current_object.position.setFromMatrixPosition(reticle.matrix);
-            current_object.visible = true;
-        }
-    }
-
-    function loadModel(model) {
-        // ใช้ RGBELoader เพื่อโหลด environment map จาก GitHub
-        new RGBELoader()
-            .setDataType(THREE.UnsignedByteType)
-            .setPath('https://raw.githubusercontent.com/juniorkanfwqgwg/AR-Web/main/textures/')
-            .load('photo_studio_01_1k.hdr', function (texture) {
-                envmap = pmremGenerator.fromEquirectangular(texture).texture;
-                scene.environment = envmap;
-                texture.dispose();
-                pmremGenerator.dispose();
-                render();
-
-                // โหลดโมเดล GLB จาก GitHub ตาม ID ที่ผู้ใช้เลือก
-                var loader = new GLTFLoader().setPath('https://raw.githubusercontent.com/juniorkanfwqgwg/AR-Web/main/3d/');
-                loader.load(model + ".glb", function (glb) {
-                    current_object = glb.scene;
-                    scene.add(current_object);
-                    arPlace();
-
-                    var box = new THREE.Box3();
-                    box.setFromObject(current_object);
-                    box.center(controls.target);
-
-                    controls.update();
-                    render();
-                });
-            });
-    }
-
-    function init() {
+    // ตรวจสอบว่าเบราว์เซอร์รองรับ WebXR หรือไม่
+    async function init() {
         container = document.createElement('div');
-        document.getElementById("container").appendChild(container);
+        document.getElementById("content").appendChild(container);
 
         scene = new THREE.Scene();
         window.scene = scene;
@@ -231,7 +113,26 @@
         }
 
         options.domOverlay = { root: document.getElementById('content') };
-        document.body.appendChild(ARButton.createButton(renderer, options));
+
+        // ตรวจสอบการรองรับ WebXR
+        if (navigator.xr) {
+            try {
+                const sessionSupported = await navigator.xr.isSessionSupported('immersive-ar');
+                if (sessionSupported) {
+                    // ถ้า WebXR รองรับให้ใช้งาน AR
+                    document.body.appendChild(ARButton.createButton(renderer, options));
+                } else {
+                    // ถ้าไม่รองรับ WebXR ใช้ getUserMedia
+                    requestCameraAccess();
+                }
+            } catch (error) {
+                console.error("Error checking WebXR support:", error);
+                requestCameraAccess(); // fallback ใช้ getUserMedia
+            }
+        } else {
+            // ถ้าไม่รองรับ WebXR ใช้ getUserMedia
+            requestCameraAccess();
+        }
 
         reticle = new THREE.Mesh(
             new THREE.RingBufferGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2),
@@ -242,6 +143,45 @@
         scene.add(reticle);
 
         window.addEventListener('resize', onWindowResize, false);
+
+        animate();
+    }
+
+    function loadModel(model) {
+        // ใช้ RGBELoader เพื่อโหลด environment map จาก GitHub
+        new RGBELoader()
+            .setDataType(THREE.UnsignedByteType)
+            .setPath('https://raw.githubusercontent.com/juniorkanfwqgwg/AR-Web/main/textures/')
+            .load('photo_studio_01_1k.hdr', function (texture) {
+                envmap = pmremGenerator.fromEquirectangular(texture).texture;
+                scene.environment = envmap;
+                texture.dispose();
+                pmremGenerator.dispose();
+                render();
+
+                // โหลดโมเดล GLB จาก GitHub
+                var loader = new GLTFLoader().setPath('https://raw.githubusercontent.com/juniorkanfwqgwg/AR-Web/main/3d/');
+                loader.load(model + ".glb", function (glb) {
+                    current_object = glb.scene;
+                    scene.add(current_object);
+
+                    arPlace();
+
+                    var box = new THREE.Box3();
+                    box.setFromObject(current_object);
+                    box.center(controls.target);
+
+                    controls.update();
+                    render();
+                });
+            });
+    }
+
+    function arPlace() {
+        if (reticle.visible) {
+            current_object.position.setFromMatrixPosition(reticle.matrix);
+            current_object.visible = true;
+        }
     }
 
     function onWindowResize() {
@@ -298,6 +238,9 @@
         }
         renderer.render(scene, camera);
     }
+
+    init();
+
 </script>
 
 </body>
