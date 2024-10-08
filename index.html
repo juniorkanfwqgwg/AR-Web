@@ -57,12 +57,23 @@
             opacity: 0.8;
             z-index: -1;
         }
+
+        video#camera-feed {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none; /* ซ่อนเมื่อไม่ใช้งาน */
+        }
     </style>
 </head>
 <body>
 
 <div id="container"></div>
 <div id="background"></div> <!-- พื้นหลังไฟ -->
+<video id="camera-feed" autoplay playsinline></video>
 <button class="ar-button flame-effect" id="start-ar">Start AR</button>
 
 <script type="module">
@@ -70,8 +81,7 @@
     import { ARButton } from 'https://cdn.jsdelivr.net/npm/three@0.133.1/examples/jsm/webxr/ARButton.js';
     import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.133.1/examples/jsm/loaders/GLTFLoader.js';
 
-    let container, camera, scene, renderer, controller;
-    let model;
+    let container, camera, scene, renderer, model;
 
     function init() {
         container = document.getElementById('container');
@@ -92,12 +102,6 @@
             model = gltf.scene;
             model.scale.set(0.2, 0.2, 0.2); // ขนาดโมเดล
             scene.add(model);
-        });
-
-        // สร้างปุ่ม AR
-        const startARButton = document.getElementById('start-ar');
-        startARButton.addEventListener('click', () => {
-            document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
         });
 
         window.addEventListener('resize', onWindowResize, false);
@@ -122,8 +126,46 @@
         renderer.render(scene, camera);
     }
 
-    // เริ่มการทำงาน
+    // ฟังก์ชันขอสิทธิ์เปิดกล้องหากไม่รองรับ WebXR
+    async function requestCameraAccess() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            const videoElement = document.getElementById('camera-feed');
+            videoElement.srcObject = stream;
+            videoElement.style.display = 'block'; // แสดงวิดีโอจากกล้อง
+        } catch (error) {
+            console.error("Camera access denied:", error);
+            alert("Unable to access camera. Please allow camera access.");
+        }
+    }
+
+    // ตรวจสอบการรองรับ WebXR
+    async function startAR() {
+        if (navigator.xr) {
+            try {
+                const isARSupported = await navigator.xr.isSessionSupported('immersive-ar');
+                if (isARSupported) {
+                    document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
+                } else {
+                    console.log("WebXR not supported, using camera fallback.");
+                    requestCameraAccess(); // fallback ไปที่กล้อง
+                }
+            } catch (error) {
+                console.error("Error checking AR support:", error);
+                requestCameraAccess(); // fallback ไปที่กล้อง
+            }
+        } else {
+            console.log("WebXR not available, using camera fallback.");
+            requestCameraAccess(); // fallback ไปที่กล้อง
+        }
+    }
+
+    // เริ่มการทำงานของ AR
+    document.getElementById('start-ar').addEventListener('click', startAR);
+
+    // เริ่มต้นการทำงาน
     init();
+
 </script>
 
 </body>
