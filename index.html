@@ -1,153 +1,26 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <title>AR Scan - Fire Theme</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #ff4500; /* สีส้มแนวไฟ */
-            font-family: "Lato", sans-serif;
-        }
 
-        #container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.0.0/dist/aframe-extras.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  </head>
+  <body>
+    <a-scene mindar-image="imageTargetSrc: https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/band-example/band.mind;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+      <a-assets>
+        <a-asset-item id="bearModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/band-example/bear/scene.gltf"></a-asset-item>
+        <a-asset-item id="raccoonModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/band-example/raccoon/scene.gltf"></a-asset-item>
+      </a-assets>
 
-        #canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-        /* ปุ่มเริ่ม AR */
-        .ar-button {
-            position: absolute;
-            bottom: 20px;
-            left: calc(50% - 60px);
-            width: 120px;
-            height: 40px;
-            background-color: #ff4500;
-            color: white;
-            border: 2px solid #ffdf00;
-            border-radius: 10px;
-            font-size: 18px;
-            text-align: center;
-            line-height: 40px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        .ar-button:hover {
-            background-color: #ff6347; /* เมื่อ hover เปลี่ยนเป็นส้มสดขึ้น */
-        }
-
-        /* องค์ประกอบ UI แบบเปลวไฟ */
-        .flame-effect {
-            color: white;
-            text-shadow: 0 0 5px #ffdf00, 0 0 10px #ff8c00, 0 0 15px #ff4500;
-        }
-
-        /* กรอบสำหรับสแกน AR */
-        #scan-box {
-            position: absolute;
-            top: calc(50% - 100px);
-            left: calc(50% - 100px);
-            width: 200px;
-            height: 200px;
-            border: 4px dashed #ffdf00;
-            z-index: 2;
-            display: none;
-        }
-    </style>
-</head>
-<body>
-
-<div id="container"></div>
-<canvas id="canvas"></canvas> <!-- แสดงวิดีโอพร้อมฟิลเตอร์ -->
-<div id="scan-box"></div> <!-- กรอบสแกน AR -->
-<button class="ar-button flame-effect" id="start-ar">Start AR</button>
-
-<script type="module">
-    let videoStream, canvas, ctx;
-    const scanBox = document.getElementById('scan-box');
-    
-    // ฟังก์ชันขอสิทธิ์เปิดกล้อง
-    async function requestCameraAccess() {
-        try {
-            // ขอสิทธิ์การเข้าถึงกล้อง
-            videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-
-            // แสดงวิดีโอผ่าน canvas
-            canvas = document.getElementById('canvas');
-            ctx = canvas.getContext('2d');
-            const videoElement = document.createElement('video');
-            videoElement.srcObject = videoStream;
-            videoElement.play();
-
-            // เมื่อได้รับการอนุญาตแล้ว แสดงกรอบสแกน AR
-            scanBox.style.display = 'block';
-
-            // ใส่ฟิลเตอร์ให้กล้อง
-            videoElement.addEventListener('play', () => {
-                drawVideoWithFilter(videoElement);
-            });
-
-        } catch (error) {
-            console.error("Camera access denied:", error);
-            alert("Unable to access the camera. Please allow camera access.");
-        }
-    }
-
-    // วาดวิดีโอพร้อมฟิลเตอร์ใน canvas
-    function drawVideoWithFilter(videoElement) {
-        function drawFrame() {
-            ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-            applyFilter(ctx, canvas.width, canvas.height); // ใส่ฟิลเตอร์ให้วิดีโอ
-            requestAnimationFrame(drawFrame);
-        }
-        drawFrame();
-    }
-
-    // ฟิลเตอร์ใส่ให้กล้อง (เช่น เปลี่ยนสีของวิดีโอ)
-    function applyFilter(ctx, width, height) {
-        let imageData = ctx.getImageData(0, 0, width, height);
-        let data = imageData.data;
-
-        // ตัวอย่างฟิลเตอร์: เพิ่มสีส้มแบบแนวไฟ
-        for (let i = 0; i < data.length; i += 4) {
-            data[i] += 40;     // เพิ่มค่าแดง
-            data[i + 1] -= 20; // ลดค่าทอง
-            data[i + 2] -= 30; // ลดค่าสีน้ำเงิน
-        }
-
-        ctx.putImageData(imageData, 0, 0);
-    }
-
-    // เริ่มต้นการทำงาน AR เมื่อกดปุ่ม
-    document.getElementById('start-ar').addEventListener('click', async () => {
-        await requestCameraAccess();
-    });
-
-    // กำหนดขนาดของ canvas ให้พอดีกับหน้าจอ
-    function resizeCanvas() {
-        const canvas = document.getElementById('canvas');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-    }
-
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas(); // เรียกครั้งแรกเพื่อกำหนดขนาดเริ่มต้น
-
-</script>
-
-</body>
+      <a-entity mindar-image-target="targetIndex: 0">
+        <a-gltf-model rotation="0 0 0 " position="0 -0.25 0" scale="0.05 0.05 0.05" src="#raccoonModel" animation-mixer>
+      </a-entity>
+      <a-entity mindar-image-target="targetIndex: 1">
+        <a-gltf-model rotation="0 0 0 " position="0 -0.25 0" scale="0.05 0.05 0.05" src="#bearModel" animation-mixer>
+      </a-entity>
+    </a-scene>
+  </body>
 </html>
